@@ -148,6 +148,6 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
                 if choice == "epic":
                     emoticon = '😱'
                     reply_text = reply.epic
+                await client.send_react_emoticon(event.chat, event.id, emoticon)
                 if reply_text is not None:
-                    await client.send_react_emoticon(event.chat, event.id, emoticon)
                     await event.reply(reply_text)
