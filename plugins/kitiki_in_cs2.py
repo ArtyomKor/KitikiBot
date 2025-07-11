@@ -95,7 +95,7 @@ async def check_spam(client: KitikiClient, event: Message):
             for phrase in escortbot_phrases:
                 if phrase in translated:
                     phrase_count += 1
-            if phrase_count >= 2 or "казино" in translated:
+            if phrase_count >= 2 or "казино" in translated or event.fwd_from is not None:
                 mods = ["@vladik4il", "@big_pank_cs"]
                 random.shuffle(mods)
                 calls = (await session.execute(select(EscortBotAdminCall))).scalars().all()
