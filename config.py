@@ -16,3 +16,5 @@ class Config:
     DB_PASSWORD = getenv("DB_PASSWORD")
     CHATS = list(map(int, getenv("CHATS").split(",")))
     ADMINS = list(map(int, getenv("ADMINS").split(",")))
+    INLINE_TOKEN = getenv("INLINE_TOKEN")
+    STEAM_API_KEY = getenv("STEAM_API_KEY")
