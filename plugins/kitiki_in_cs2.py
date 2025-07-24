@@ -109,6 +109,7 @@ async def check_spam(client: KitikiClient, event: Message):
 
 @KitikiClient.on(KitikiINCS2Chats())
 async def woof_woof_woof_woof(client: KitikiClient, event: Message):
+    if event.from_id.user_id == (await client.get_me()).id: return
     await event.mark_read()
     if await check_spam(client, event):
         return
@@ -140,14 +141,17 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
                 await client.send_react_emoticon(event.chat, event.id, emote.emoticon)
             reply = (await session.execute(select(Reply).where(Reply.media_id == media.id))).scalar_one_or_none()
             if reply is not None:
-                emoticon = '😁'
-                reply_text = None
-                if choice is not None:
-                    emoticon = '🤯'
-                    reply_text = reply.rare
-                if choice == "epic":
-                    emoticon = '😱'
-                    reply_text = reply.epic
-                await client.send_react_emoticon(event.chat, event.id, emoticon)
-                if reply_text is not None:
-                    await event.reply(reply_text)
+                if reply.rare is not None and reply.epic is not None:
+                    emoticon = '😁'
+                    reply_text = None
+                    if choice is not None:
+                        emoticon = '🤯'
+                        reply_text = reply.rare
+                    if choice == "epic":
+                        emoticon = '😱'
+                        reply_text = reply.epic
+                    await client.send_react_emoticon(event.chat, event.id, emoticon)
+                    if reply_text is not None:
+                        await event.reply(reply_text)
+                elif reply.gif_id is not None:
+                    await client.send_file(event.chat, event.media, reply_to=event.id)

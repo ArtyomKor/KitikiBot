@@ -302,7 +302,9 @@ async def get_version_data():
 
 
 def parse_tg_markdown(text):
-    return text.replace("-", r"\-").replace(".", r"\.").replace("(", r"\(").replace(")", r"\)").replace("=", r"\=").replace(">", r"\>")
+    return text.replace("-", r"\-").replace(".", r"\.").replace("(", r"\(").replace(")", r"\)").replace("=",
+                                                                                                        r"\=").replace(
+        ">", r"\>")
 
 
 async def default_inline(inline_query: InlineQuery):
