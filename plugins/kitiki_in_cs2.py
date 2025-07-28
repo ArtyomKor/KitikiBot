@@ -153,5 +153,5 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
                     await client.send_react_emoticon(event.chat, event.id, emoticon)
                     if reply_text is not None:
                         await event.reply(reply_text)
-                elif reply.gif_id is not None:
+                elif reply.gif_id is not None and event.reply_to is None:
                     await client.send_file(event.chat, event.media, reply_to=event.id)
