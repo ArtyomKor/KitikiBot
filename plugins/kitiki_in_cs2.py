@@ -2,7 +2,7 @@ import asyncio
 import random
 
 from sqlalchemy import select
-from telethon import events
+from telethon import events, types
 from telethon.tl import functions
 from telethon.tl.custom import Message
 from telethon.tl.types import UpdateEditChannelMessage, InputMessagesFilterEmpty, ChannelParticipantsAdmins
@@ -11,14 +11,15 @@ from config import Config
 from database import Session
 from database.models import EscortBotDictionary, EscortBotPhrase, EscortBotAdminCall, Emotion, Reply
 from kitikigram import KitikiClient, KitikiINCS2Chats
+from plugins.kitikiai import ai_reply, reset_memory
 
 
 async def is_admin(client: KitikiClient, event: Message) -> bool:
     admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
-    if event.from_id.user_id in Config.ADMINS:
+    if get_from_id(event) in Config.ADMINS:
         return True
     for user in admins:
-        if user.id == event.from_id.user_id:
+        if user.id == get_from_id(event):
             return True
     return False
 
@@ -37,6 +38,7 @@ rare_chance = 7.5
 epic_chance = 2.5
 
 send_ids = {"stickers": False, "gifs": False}
+ai_disabled = False
 
 
 @KitikiClient.on(KitikiINCS2Chats(from_users=[955018156], pattern="/stickers"))
@@ -46,6 +48,20 @@ async def stickers(client: KitikiClient, event: Message):
     message = await event.reply(f"Отладка стикеров {'включена' if send_ids['stickers'] else 'отключена'}.")
     await asyncio.sleep(3)
     await message.delete()
+
+
+@KitikiClient.on(KitikiINCS2Chats(pattern="/reset"))
+async def reset(client: KitikiClient, event: Message):
+    if await is_admin(client, event):
+        reset_memory()
+        await event.reply("Память очищена.")
+
+@KitikiClient.on(KitikiINCS2Chats(pattern="/ai"))
+async def ai_toggle(client: KitikiClient, event: Message):
+    if await is_admin(client, event):
+        global ai_disabled
+        ai_disabled = not ai_disabled
+        await event.reply(f"ИИ {'выключен' if ai_disabled else 'включен'}.")
 
 
 @KitikiClient.on(KitikiINCS2Chats(from_users=[955018156], pattern="/gifs"))
@@ -107,9 +123,20 @@ async def check_spam(client: KitikiClient, event: Message):
     return False
 
 
+def get_from_id(message: Message):
+    from_id = message.from_id
+    if isinstance(from_id, types.PeerUser):
+        from_id = from_id.user_id
+    elif isinstance(from_id, types.PeerChannel):
+        from_id = from_id.channel_id
+    return from_id
+
+
 @KitikiClient.on(KitikiINCS2Chats())
 async def woof_woof_woof_woof(client: KitikiClient, event: Message):
-    if event.from_id.user_id == (await client.get_me()).id: return
+    from_id = get_from_id(event)
+    if from_id == client.me.id: return
+    message = None
     await event.mark_read()
     if await check_spam(client, event):
         return
@@ -121,7 +148,7 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
         return
     if event.reply_to is not None:
         message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)
-        if message.from_id.user_id == 7678691209 and "здравствуйте" in event.raw_text.lower():
+        if get_from_id(message) == client.me.id and "здравствуйте" in event.raw_text.lower():
             await event.reply("Здравствуйте!")
             return
     if "@kitikichatbot" in event.raw_text.lower() and "здравствуйте" in event.raw_text.lower():
@@ -155,3 +182,20 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
                         await event.reply(reply_text)
                 elif reply.gif_id is not None and event.reply_to is None:
                     await client.send_file(event.chat, event.media, reply_to=event.id)
+                return
+    if event.text is not None and event.text != "" and not ai_disabled:
+        await client(functions.messages.SetTypingRequest(
+                peer=event.chat_id,
+                action=types.SendMessageTypingAction()
+            ))
+        force = False
+        if message is not None:
+            if get_from_id(message) == client.me.id:
+                force = True
+        reply = await ai_reply(event, client, is_admin, message, force)
+        if reply is not None:
+            await event.reply(reply, parse_mode="Markdown")
+        await client(functions.messages.SetTypingRequest(
+            peer=event.chat_id,
+            action=types.SendMessageCancelAction()
+        ))

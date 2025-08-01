@@ -16,6 +16,7 @@ class KitikiClient(TelegramClient):
     handlers = []
 
     def __init__(self, session: str, api_id: int, api_hash: str, *, plugins=None, before_start=None, **kwargs):
+        self.me: User = None
         if plugins is None:
             plugins = []
 
@@ -33,6 +34,9 @@ class KitikiClient(TelegramClient):
         for handler in KitikiClient.handlers:
             self.add_plugin_event_handler(handler[0], handler[1])
         KitikiClient.handlers.clear()
+
+    async def set_me(self):
+        self.me = await self.get_me()
 
     def add_plugin_event_handler(self, callback: Callback, event: EventBuilder = None):
         self.add_event_handler(callback, event, True)
@@ -123,6 +127,7 @@ class KitikiClient(TelegramClient):
         for handler in KitikiClient.handlers:
             self.add_event_handler(handler[0], handler[1])
         super().start(*args, **kwargs)
+        self.loop.run_until_complete(self.set_me())
 
     async def send_react(self,
                          chat: InputPeerEmpty | InputPeerSelf | InputPeerChat | InputPeerUser | InputPeerChannel | InputPeerUserFromMessage | InputPeerChannelFromMessage,
