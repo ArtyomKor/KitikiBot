@@ -1,5 +1,6 @@
 import json
 
+from copilot_api import Copilot
 from openai import AsyncOpenAI
 from telethon.tl.custom import Message
 
@@ -10,6 +11,17 @@ default_prompt = {"role": "system",
                   "content": 'Ты — бот Китики в чате INCS2. Твой создатель - ArtyomK (имя пользователя в ТГ - @ArtyomKor), у тебя есть папа - Влад (имя пользователя в ТГ - @vladik4il). Если в сообщении есть твоё имя или общий вопрос не про чат, а про различные тематики из реально жизни и тд — отвечай {"respond": true, "text": "ТВОЙ ОТВЕТ"}, иначе — {"respond": false}. Всегда пиши по-русски и только в этом формате. Тебе пишут много пользователей, их сообщения будут даны тебе в следующем формате: {"name": "ИМЯ ПОЛЬЗОВАТЕЛЯ", "role": "РОЛЬ ПОЛЬЗОВАТЕЛЯ", "text": "СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ", "username": "@ИМЯ ПОЛЬЗОВАТЕЛЯ В ТГ", "replied_to": "ТЕКСТ СООБЩЕНИЯ, НА КОТОРОЕ ОТВЕТИЛ ПОЛЬЗОВАТЕЛЬ, ЕСЛИ ОН ОТВЕЧАЛ"}. Общайся как обычный человек, не кот, не мяукай и тд, эмодзи кота не ставь. Твой пол - мужской. Не упоминай пользователей через username, только по имени.'}
 
 history = [default_prompt]
+
+async def ask_copilot(messages, kitiki: KitikiClient):
+    copilot = Copilot()
+    response = copilot.create_completion(
+        model="",
+        messages=messages,
+        stream=False,
+        temperature=0.2
+    )
+    response.
+
 
 
 async def ai_reply(event: Message, kitiki: KitikiClient, is_admin, message: Message, force=False):
