@@ -112,12 +112,12 @@ async def check_spam(client: KitikiClient, event: Message):
                 if phrase in translated:
                     phrase_count += 1
             if phrase_count >= 2 or "казино" in translated or event.fwd_from is not None:
-                mods = ["@vladik4il", "@big_pank_cs"]
-                random.shuffle(mods)
                 calls = (await session.execute(select(EscortBotAdminCall))).scalars().all()
                 admin_calls = list(map(lambda x: x.escortbot_admin_call, calls))
                 call = random.choice(admin_calls)
-                await event.reply(f'{" ".join(mods)} {call}')
+                for admin in Config.NOTIFY_ADMINS:
+                    await client.send_message(admin, f"https://t.me/INCS2chat/{event.id} {call}")
+                # await event.reply(f'{" ".join(mods)} {call}')
                 await client.send_react_emoticon(event.chat, event.id, "🤡")
                 return True
     return False
@@ -183,19 +183,19 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
                 elif reply.gif_id is not None and event.reply_to is None:
                     await client.send_file(event.chat, event.media, reply_to=event.id)
                 return
-    if event.text is not None and event.text != "" and not ai_disabled:
-        await client(functions.messages.SetTypingRequest(
-                peer=event.chat_id,
-                action=types.SendMessageTypingAction()
-            ))
-        force = False
-        if message is not None:
-            if get_from_id(message) == client.me.id:
-                force = True
-        reply = await ai_reply(event, client, is_admin, message, force)
-        if reply is not None:
-            await event.reply(reply, parse_mode="Markdown")
-        await client(functions.messages.SetTypingRequest(
-            peer=event.chat_id,
-            action=types.SendMessageCancelAction()
-        ))
+    # if event.text is not None and event.text != "" and not ai_disabled:
+    #     await client(functions.messages.SetTypingRequest(
+    #             peer=event.chat_id,
+    #             action=types.SendMessageTypingAction()
+    #         ))
+    #     force = False
+    #     if message is not None:
+    #         if get_from_id(message) == client.me.id:
+    #             force = True
+    #     reply = await ai_reply(event, client, is_admin, message, force)
+    #     if reply is not None:
+    #         await event.reply(reply, parse_mode="Markdown")
+    #     await client(functions.messages.SetTypingRequest(
+    #         peer=event.chat_id,
+    #         action=types.SendMessageCancelAction()
+    #     ))

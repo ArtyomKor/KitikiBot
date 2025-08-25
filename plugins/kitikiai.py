@@ -12,15 +12,15 @@ default_prompt = {"role": "system",
 
 history = [default_prompt]
 
-async def ask_copilot(messages, kitiki: KitikiClient):
-    copilot = Copilot()
-    response = copilot.create_completion(
-        model="",
-        messages=messages,
-        stream=False,
-        temperature=0.2
-    )
-    response.
+# async def ask_copilot(messages, kitiki: KitikiClient):
+#     copilot = Copilot()
+#     response = copilot.create_completion(
+#         model="",
+#         messages=messages,
+#         stream=False,
+#         temperature=0.2
+#     )
+#     response.
 
 
 
