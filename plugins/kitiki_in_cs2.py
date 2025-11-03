@@ -118,8 +118,12 @@ async def voted(call: CallbackQuery):
     username = call.data.split(";")[1]
     if not (call.from_user.id in votes[username]["mute"] or call.from_user.id in votes[username]["not"]):
         t = call.data.split(";")[0]
-        if call.from_user.username == username.removeprefix("@") and t == "not":
+        name = call.from_user.first_name
+        if call.from_user.last_name is not None:
+            name = f"{name} {call.from_user.last_name}"
+        if (call.from_user.username == username.removeprefix("@") or name == username) and t == "not":
             await bot.answer_callback_query(call.id, "Вы можете проголосовать только за пункт своего мута!")
+            return
         votes[username][t].add(call.from_user.id)
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton(f"✅ ({len(list(votes[username]['mute']))})", callback_data=f"mute;{username}"))
