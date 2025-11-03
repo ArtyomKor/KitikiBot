@@ -204,14 +204,14 @@ async def send_roulette(client: KitikiClient, entity, emojis: list[str], reply_t
     random.shuffle(emojis)
     i = 0
     emojis = emojis*4
-    msg = get_roulette_message(emojis[i:i + 5])
-    message = await client.send_message(entity, msg, parse_mode="md", reply_to=reply_to)
+    orig_msg = get_roulette_message(emojis[i:i + 5])
+    message = await client.send_message(entity, orig_msg, parse_mode="md", reply_to=reply_to)
     spin = 0
     while spin < 15:
         i = i + 1
         msg = get_roulette_message(emojis[i:i + 5])
         spin = spin + 1
-        await client.edit_message(message.peer_id, message, msg, parse_mode="md")
+        if msg != orig_msg: await client.edit_message(message.peer_id, message, msg, parse_mode="md")
         await asyncio.sleep(0.25)
     win_emoji = emojis[i+2]
     msg = get_roulette_message(emojis[i:i + 5]) + f"\nПоздравляем! Выпало: {win_emoji}"
