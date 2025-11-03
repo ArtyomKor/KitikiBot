@@ -8,15 +8,16 @@ from zoneinfo import ZoneInfo
 import aiohttp
 from babel.dates import format_datetime as babel_format_datetime
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InlineQuery, InlineQueryResultArticle, InputTextMessageContent
+from telebot.types import InlineQuery, InlineQueryResultArticle, InputTextMessageContent, Message
 
 from config import Config
 
 bot = AsyncTeleBot(Config.INLINE_TOKEN)
 
 
-@bot.inline_handler(lambda query: True)
+@bot.inline_handler(lambda query: not query.query.startswith("mute;"))
 async def default_query(inline_query):
+    print("ALO")
     try:
         await default_inline(inline_query)
     except Exception as e:
@@ -348,5 +349,9 @@ async def default_inline(inline_query: InlineQuery):
     await bot.answer_inline_query(inline_query.id, results, cache_time=10)
 
 
+@bot.message_handler(commands=["start"])
+async def start_command(message: Message):
+    await bot.reply_to(message, message.text)
+
 async def main_loop():
-    await bot.infinity_polling()
+    await bot.infinity_polling(skip_pending=True)

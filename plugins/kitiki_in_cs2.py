@@ -1,7 +1,10 @@
 import asyncio
 import random
+import sys
 
 from sqlalchemy import select
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, \
+    InlineQueryResultArticle, InputTextMessageContent
 from telethon import events, types
 from telethon.tl import functions
 from telethon.tl.custom import Message
@@ -10,18 +13,51 @@ from telethon.tl.types import UpdateEditChannelMessage, InputMessagesFilterEmpty
 from config import Config
 from database import Session
 from database.models import EscortBotDictionary, EscortBotPhrase, EscortBotAdminCall, Emotion, Reply
+from inline import bot
 from kitikigram import KitikiClient, KitikiINCS2Chats
-from plugins.kitikiai import ai_reply, reset_memory
+from plugins.kitikiai import reset_memory
+
+
+AGREE_COUNT = 6
+VOTE_TIMEOUT = 5
 
 
 async def is_admin(client: KitikiClient, event: Message) -> bool:
-    admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
-    if get_from_id(event) in Config.ADMINS:
-        return True
-    for user in admins:
-        if user.id == get_from_id(event):
+    try:
+        admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
+        if get_from_id(event) in Config.ADMINS:
             return True
-    return False
+        for user in admins:
+            if user.id == get_from_id(event) or get_from_id(event) == client.me.id:
+                return True
+        return False
+    except:
+        return False
+
+async def is_admin_id(client: KitikiClient, event: Message, user_id: int) -> bool:
+    try:
+        admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
+        if user_id in Config.ADMINS:
+            return True
+        for user in admins:
+            if user.id == user_id or user_id == client.me.id:
+                return True
+        return False
+    except:
+        return False
+
+async def is_admin_username(client: KitikiClient, event: Message, username: str) -> bool:
+    try:
+        admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
+        username = username.removeprefix("@").lower()
+        if username in Config.ADMIN_USERNAMES:
+            return True
+        for user in admins:
+            if user.username.lower() == username or username == client.me.username.lower():
+                return True
+        return False
+    except:
+        return False
 
 
 @KitikiClient.on(events.Raw(UpdateEditChannelMessage))
@@ -41,7 +77,7 @@ send_ids = {"stickers": False, "gifs": False}
 ai_disabled = False
 
 
-@KitikiClient.on(KitikiINCS2Chats(from_users=[955018156], pattern="/stickers"))
+@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/stickers"))
 async def stickers(client: KitikiClient, event: Message):
     global send_ids
     send_ids["stickers"] = not send_ids["stickers"]
@@ -56,6 +92,7 @@ async def reset(client: KitikiClient, event: Message):
         reset_memory()
         await event.reply("Память очищена.")
 
+
 @KitikiClient.on(KitikiINCS2Chats(pattern="/ai"))
 async def ai_toggle(client: KitikiClient, event: Message):
     if await is_admin(client, event):
@@ -64,13 +101,118 @@ async def ai_toggle(client: KitikiClient, event: Message):
         await event.reply(f"ИИ {'выключен' if ai_disabled else 'включен'}.")
 
 
-@KitikiClient.on(KitikiINCS2Chats(from_users=[955018156], pattern="/gifs"))
+@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/gifs"))
 async def gifs(client: KitikiClient, event: Message):
     global send_ids
     send_ids["gifs"] = not send_ids["gifs"]
     message = await event.reply(f"Отладка GIF {'включена' if send_ids['gifs'] else 'отключена'}.")
     await asyncio.sleep(3)
     await message.delete()
+
+
+votes = {}
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("mute;") or call.data.startswith("not;"))
+async def voted(call: CallbackQuery):
+    username = call.data.split(";")[1]
+    if not (call.from_user.id in votes[username]["mute"] or call.from_user.id in votes[username]["not"]):
+        t = call.data.split(";")[0]
+        if call.from_user.username == username.removeprefix("@") and t == "not":
+            await bot.answer_callback_query(call.id, "Вы можете проголосовать только за пункт своего мута!")
+        votes[username][t].add(call.from_user.id)
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton(f"✅ ({len(list(votes[username]['mute']))})", callback_data=f"mute;{username}"))
+        keyboard.add(InlineKeyboardButton(f"❌ ({len(list(votes[username]['not']))})", callback_data=f"not;{username}"))
+        await bot.edit_message_reply_markup(inline_message_id=call.inline_message_id, reply_markup=keyboard)
+    await bot.answer_callback_query(call.id)
+
+
+@bot.inline_handler(func=lambda call: call.query.startswith("mute;"))
+async def start_vote(call: InlineQuery):
+    username = call.query.split(";")[1]
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("✅ (0)", callback_data=f"mute;{username}"))
+    keyboard.add(InlineKeyboardButton("❌ (0)", callback_data=f"not;{username}"))
+    result = [InlineQueryResultArticle(f"mute;{username}", "KITIKI_BOT_MUTE", InputTextMessageContent(f"Запущено голосование за мут {username} на 1 неделю\nДля мута необходимо минимум {AGREE_COUNT} согласившихся"), keyboard)]
+    await bot.answer_inline_query(call.id, result, cache_time=VOTE_TIMEOUT+2*60)
+
+
+@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern=r"\/votemute @[A-Za-z0-9]+"))
+async def vote_mute(client: KitikiClient, event: Message):
+    username = event.text.removeprefix("/votemute ")
+    if await is_admin_username(client, event, username):
+        return
+    votes[username] = {"mute": set([]), "not": set([]), "sended": False}
+    result = (await client.inline_query(bot.user.id, f"mute;{username}", entity=event.chat_id))[0]
+    message = await result.click()
+    await asyncio.sleep(VOTE_TIMEOUT * 60)
+    await message.delete()
+    del votes[username]
+
+@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/votemute"))
+async def vote_mute_reply(client: KitikiClient, event: Message):
+    user = event.reply_to
+    if user is None:
+        m = await event.reply("Ответьте на сообщение другого пользователя!")
+        await asyncio.sleep(10)
+        await m.delete()
+        return
+
+    message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)
+
+    if not isinstance(message.from_id, types.PeerUser):
+        m = await event.reply("Ответьте на сообщение пользователя!")
+        await asyncio.sleep(10)
+        await m.delete()
+        return
+
+    if await is_admin_id(client, event, message.from_id.user_id):
+        return
+    user = await client.get_entity(message.from_id.user_id)
+    username = "@"+user.username
+    votes[username] = {"mute": set([]), "not": set([]), "sended": False}
+    result = (await client.inline_query(bot.user.id, f"mute;{username}", entity=event.chat_id))[0]
+    message = await result.click()
+    await asyncio.sleep(VOTE_TIMEOUT * 60)
+    await message.delete()
+    del votes[username]
+
+
+def get_roulette_message(emojis: list[str]):
+    return f"""`|🎰 🎲 ⬇️ 🎲 🎰|`
+    
+`|{" ".join(emojis)}|`
+
+`|🎲 🎰 ⬆️ 🎰 🎲|`"""
+
+
+async def send_roulette(client: KitikiClient, entity, emojis: list[str], reply_to: Message | None = None):
+    i = 0
+    while len(emojis) < 5:
+        emojis.append(emojis[i])
+        i = i + 1
+    random.shuffle(emojis)
+    i = 0
+    emojis = emojis*4
+    msg = get_roulette_message(emojis[i:i + 5])
+    message = await client.send_message(entity, msg, parse_mode="md", reply_to=reply_to)
+    spin = 0
+    while spin < 15:
+        i = i + 1
+        msg = get_roulette_message(emojis[i:i + 5])
+        spin = spin + 1
+        await client.edit_message(message.peer_id, message, msg, parse_mode="md")
+        await asyncio.sleep(0.25)
+    win_emoji = emojis[i+2]
+    msg = get_roulette_message(emojis[i:i + 5]) + f"\nПоздравляем! Выпало: {win_emoji}"
+    await client.edit_message(message.peer_id, message, msg, parse_mode="md")
+
+
+
+@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/roulette"))
+async def roulette(client: KitikiClient, event: Message):
+    await send_roulette(client, event.chat_id, ["❌", "✅", "🕯️", "☠️", "👀"], event)
 
 
 async def escortbot_message_translate(message: str):
@@ -132,8 +274,17 @@ def get_from_id(message: Message):
     return from_id
 
 
+hello_msg = "Бета-Здравствуйте!" if sys.platform == "win32" else "Здравствуйте"
+
+
 @KitikiClient.on(KitikiINCS2Chats())
 async def woof_woof_woof_woof(client: KitikiClient, event: Message):
+    if event.forward is not None: return
+    for username, v in votes.items():
+        if len(list(v["mute"])) >= AGREE_COUNT and not v["sended"]:
+            for admin in Config.NOTIFY_ADMINS:
+                await client.send_message(admin, f"Народ требует мута {username} на 5 минут!")
+            v["sended"] = True
     from_id = get_from_id(event)
     if from_id == client.me.id: return
     message = None
@@ -149,10 +300,10 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
     if event.reply_to is not None:
         message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)
         if get_from_id(message) == client.me.id and "здравствуйте" in event.raw_text.lower():
-            await event.reply("Здравствуйте!")
+            await event.reply(hello_msg)
             return
-    if "@kitikichatbot" in event.raw_text.lower() and "здравствуйте" in event.raw_text.lower():
-        await event.reply("Здравствуйте!")
+    if f"@{client.me.username}" in event.raw_text.lower() and "здравствуйте" in event.raw_text.lower():
+        await event.reply(hello_msg)
         return
     chance = random.random() * 100
     choice = None
