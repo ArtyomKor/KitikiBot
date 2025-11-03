@@ -17,7 +17,6 @@ bot = AsyncTeleBot(Config.INLINE_TOKEN)
 
 @bot.inline_handler(lambda query: not query.query.startswith("mute;"))
 async def default_query(inline_query):
-    print("ALO")
     try:
         await default_inline(inline_query)
     except Exception as e:

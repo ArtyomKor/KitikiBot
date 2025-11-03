@@ -161,16 +161,21 @@ async def vote_mute_reply(client: KitikiClient, event: Message):
 
     message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)
 
-    if not isinstance(message.from_id, types.PeerUser):
-        m = await event.reply("Ответьте на сообщение пользователя!")
-        await asyncio.sleep(10)
-        await m.delete()
-        return
+    # if not isinstance(message.from_id, types.PeerUser) and not :
+    #     m = await event.reply("Ответьте на сообщение пользователя!")
+    #     await asyncio.sleep(10)
+    #     await m.delete()
+    #     return
 
-    if await is_admin_id(client, event, message.from_id.user_id):
+    if await is_admin_id(client, event, get_from_id(message)):
         return
-    user = await client.get_entity(message.from_id.user_id)
-    username = "@"+user.username
+    user = await client.get_entity(get_from_id(message))
+    if user.username is not None:
+        username = "@"+user.username
+    else:
+        username = user.first_name
+        if user.last_name is not None:
+            username = f"{username} {user.last_name}"
     votes[username] = {"mute": set([]), "not": set([]), "sended": False}
     result = (await client.inline_query(bot.user.id, f"mute;{username}", entity=event.chat_id))[0]
     message = await result.click()
