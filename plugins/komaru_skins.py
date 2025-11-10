@@ -136,7 +136,7 @@ async def send_roulette(client: KitikiClient, entity, emojis: list[str], prefix:
     orig_msg = get_roulette_message(emojis[i:i + 5], prefix)
     message = await client.send_message(entity, orig_msg, parse_mode="md", reply_to=reply_to)
     spin = 0
-    while spin < 15:
+    while spin < 5:
         i = i + 1
         msg = get_roulette_message(emojis[i:i + 5], prefix)
         spin = spin + 1
