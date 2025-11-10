@@ -25,7 +25,7 @@ openings = {}
 def format_number(num):
     if num == int(num):
         return str(int(num))
-    return str(num)
+    return str(round(num, 2))
 
 
 async def get_or_create_user_by_id(user_id: int, session=None) -> User:
