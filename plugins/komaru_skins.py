@@ -254,6 +254,9 @@ async def trade(client: KitikiClient, message: Message):
             return
         user_message = await client.get_messages(message.chat, ids=message.reply_to.reply_to_msg_id)
         user = await client.get_entity(get_from_id(user_message))
+        if user.id == message.from_id:
+            await message.reply("Вы не можете отправить Комару себе!")
+            return
         if user.username is not None:
             username = "@" + user.username
         else:
