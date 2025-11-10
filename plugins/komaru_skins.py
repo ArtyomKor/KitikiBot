@@ -118,8 +118,9 @@ async def balance(client: KitikiClient, message: Message):
 
 
 def get_roulette_message(emojis: list[str], prefix: str | None = None):
-    return f"""{prefix + '\n' if prefix is not None else ''}`|🎰 🎲 ⬇️ 🎲 🎰|`
-
+    prefix = prefix + '\n' if prefix is not None else ''
+    return f"""{prefix}`|🎰 🎲 ⬇️ 🎲 🎰|`
+    
 `|{" ".join(emojis)}|`
 
 `|🎲 🎰 ⬆️ 🎰 🎲|`"""
