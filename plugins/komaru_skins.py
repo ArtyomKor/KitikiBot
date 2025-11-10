@@ -363,7 +363,7 @@ async def top(client: KitikiClient, message: Message):
             balance = user.balance
             user = await client.get_entity(user.tg_id)
             if user.username is not None:
-                username = "@" + user.username
+                username = user.username
             else:
                 username = user.first_name
                 if user.last_name is not None:
