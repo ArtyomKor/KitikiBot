@@ -156,7 +156,7 @@ async def case(client: KitikiClient, message: Message):
         return
     openings[message.sender_id] = True
     async with Session() as session:
-        case = (await session.execute(select(Case))).scalar_one_or_none()
+        case = (await session.execute(select(Case))).first()
         if case is None:
             return
         user = await get_or_create_user(message, session)
