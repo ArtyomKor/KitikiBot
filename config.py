@@ -23,3 +23,4 @@ class Config:
     NOTIFY_ADMINS = list(map(int, getenv("NOTIFY_ADMINS").split(",")))
     KITIKI_BOT_FAMILY_ID = int(getenv("KITIKI_BOT_FAMILY_ID"))
     INCS2 = int(getenv("INCS2_CHAT"))
+    GIF_CHAT = int(getenv("GIF_CHAT"))

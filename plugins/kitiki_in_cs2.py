@@ -274,7 +274,7 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
         await event.reply(str(event.sticker.id))
         return
     if send_ids["gifs"] and await is_admin(client, event) and event.gif is not None:
-        await event.reply(f"`{event.gif.id}` `{event.gif.access_hash}` `{base64.b64encode(event.gif.file_reference).decode()}`", parse_mode="md")
+        await event.reply(f"`{event.id}` {event.chat_id} `{event.gif.id}` `{event.gif.access_hash}` `{base64.b64encode(event.gif.file_reference).decode()}`", parse_mode="md")
         return
     if event.reply_to is not None:
         message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)

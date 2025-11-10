@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import random
 from datetime import datetime, timedelta
 from string import ascii_lowercase, digits
@@ -7,7 +6,7 @@ from string import ascii_lowercase, digits
 from sqlalchemy import select
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
-from telethon.tl.types import InputDocument, DocumentAttributeVideo, InputMediaDocument
+from telethon.tl.types import DocumentAttributeVideo
 
 from config import Config
 from database import Session
@@ -19,7 +18,6 @@ white_list_symbols = list(ascii_lowercase + digits + "абвгдеёжзийкл
 
 economy_settings: Economy | None = None
 economy_update_time = datetime.now()
-
 
 openings = {}
 
@@ -174,13 +172,14 @@ async def case(client: KitikiClient, message: Message):
         item, new_message = await send_roulette(client, message.chat_id, list(items.keys()),
                                                 f"Открываем {case.name} за {format_number(case.price)} БУБ", message)
         item = items[item]
+        del openings[message.sender_id]
         await client.edit_message(new_message.peer_id, new_message,
                                   f"Поздравляем! Вам выпала {item.name} за {format_number(item.price)} БУБ")
-        await client.send_file(message.chat_id, InputMediaDocument(InputDocument(id=item.gif_id, access_hash=item.access_hash,
-                                                              file_reference=base64.b64decode(item.file_reference))), reply_to=new_message)
+        msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
+        doc = msg.media
+        await client.send_file(message.chat_id, doc, reply_to=new_message)
         user_item = UserItem(user_id=user.id, case_item_id=item.id)
         session.add(user_item)
-        del openings[message.sender_id]
         await session.commit()
 
 
@@ -226,8 +225,9 @@ async def show_item(client: KitikiClient, message: Message):
         if item is None:
             await message.reply("Не нашли такую гиф!")
             return
-        await client.send_file(message.chat_id, InputMediaDocument(InputDocument(item.gif_id, item.access_hash,
-                                                              file_reference=base64.b64decode(item.file_reference))),
+        msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
+        doc = msg.media
+        await client.send_file(message.chat_id, doc,
                                caption=f"{item.emoticon} {item.name} - {format_number(item.price)} БУБ",
                                reply_to=message)
 
@@ -269,7 +269,8 @@ async def trade(client: KitikiClient, message: Message):
 
         new_user = await get_or_create_user_by_id(user.id, session)
         if await komaru_limit(new_user):
-            await message.reply(f"Получатель не может получить ваш обмен, так как владеет максимальным количеством Комару!")
+            await message.reply(
+                f"Получатель не может получить ваш обмен, так как владеет максимальным количеством Комару!")
             return
         item.new_user_id = new_user.id
         item.trade_confirmed = False
@@ -346,8 +347,8 @@ async def sell(client: KitikiClient, message: Message):
 async def top(client: KitikiClient, message: Message):
     async with Session() as session:
         top_users = (await session.execute(select(User)
-            .order_by(User.balance.desc())
-            .limit(15))).scalars().all()
+                                           .order_by(User.balance.desc())
+                                           .limit(15))).scalars().all()
         msg = []
         skip = 0
         for index, user in enumerate(top_users):
@@ -364,14 +365,15 @@ async def top(client: KitikiClient, message: Message):
                 continue
             index = index - skip
             if index == 0:
-                msg.append(f"{index+1}. 🥇 {username} - {balance} БУБ")
+                msg.append(f"{index + 1}. 🥇 {username} - {balance} БУБ")
             elif index == 1:
-                msg.append(f"{index+1}. 🥈 {username} - {balance} БУБ")
+                msg.append(f"{index + 1}. 🥈 {username} - {balance} БУБ")
             elif index == 2:
-                msg.append(f"{index+1}. 🥉 {username} - {balance} БУБ")
+                msg.append(f"{index + 1}. 🥉 {username} - {balance} БУБ")
             else:
-                msg.append(f"{index+1}. {username} - {balance} БУБ")
-        await message.reply("Топ 10 владельцев Комару:\n\n"+"\n".join(msg[:10]))
+                msg.append(f"{index + 1}. {username} - {balance} БУБ")
+        await message.reply("Топ 10 владельцев Комару:\n\n" + "\n".join(msg[:10]))
+
 
 @KitikiClient.on(KitikiINCS2Chats(pattern="/sell_all"))
 async def sell_all(client: KitikiClient, message: Message):
@@ -385,3 +387,10 @@ async def sell_all(client: KitikiClient, message: Message):
             item.sold = True
         await message.reply(f"Весь инвентарь был продан! Текущий баланс: {format_number(user.balance)} БУБ")
         await session.commit()
+
+
+@KitikiClient.on(NewMessage(chats=[Config.GIF_CHAT]))
+async def on_gif(client: KitikiClient, message: Message):
+    if message.gif is None:
+        return
+    await message.reply(f"{message.id} {message.chat_id}")
