@@ -147,7 +147,7 @@ async def send_roulette(client: KitikiClient, entity, emojis: list[str], prefix:
 
 
 async def komaru_limit(user: User):
-    return len(user.items) >= economy_settings.komaru_limit
+    return len([item for item in user.items if not item.sold]) >= economy_settings.komaru_limit
 
 
 @KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/case"))
