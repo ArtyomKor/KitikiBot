@@ -337,14 +337,17 @@ async def decline(client: KitikiClient, message: Message):
 
 @KitikiClient.on(NewMessage(pattern=r"^\/sell ([0-9]*)"))
 async def sell(client: KitikiClient, message: Message):
-    item_id = message.text.removeprefix("/sell ")
+    item_ids = list(map(int, message.text.removeprefix("/sell ").split(" ")))
     async with Session() as session:
-        item = await trade_check(message, item_id, session, False)
-        if item is None:
-            return
-        item.sold = True
-        item.user.balance = item.user.balance + item.case_item.price
-        await message.reply(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!\nТекущий баланс: {format_number(item.user.balance)} БУБ")
+        msg = []
+        for item_id in item_ids:
+            item = await trade_check(message, item_id, session, False)
+            if item is None:
+                return
+            item.sold = True
+            item.user.balance = item.user.balance + item.case_item.price
+            msg.append(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!")
+        await message.reply("\n".join(msg)+"\nТекущий баланс: {format_number(item.user.balance)} БУБ")
         await session.commit()
 
 
