@@ -347,7 +347,7 @@ async def sell(client: KitikiClient, message: Message):
             item.sold = True
             item.user.balance = item.user.balance + item.case_item.price
             msg.append(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!")
-        await message.reply("\n".join(msg)+"\nТекущий баланс: {format_number(item.user.balance)} БУБ")
+        await message.reply("\n".join(msg)+f"\nТекущий баланс: {format_number(item.user.balance)} БУБ")
         await session.commit()
 
 
