@@ -7,7 +7,7 @@ from string import ascii_lowercase, digits
 from sqlalchemy import select
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
-from telethon.tl.types import InputDocument, DocumentAttributeVideo
+from telethon.tl.types import InputDocument, DocumentAttributeVideo, InputMediaDocument
 
 from config import Config
 from database import Session
@@ -171,13 +171,13 @@ async def case(client: KitikiClient, message: Message):
             return
         user.balance = user.balance - case.price
         items = {item.emoticon: item for item in case.items}
-        item, new_message = await send_roulette(client, message.peer_id, list(items.keys()),
+        item, new_message = await send_roulette(client, message.chat_id, list(items.keys()),
                                                 f"Открываем {case.name} за {format_number(case.price)} БУБ", message)
         item = items[item]
         await client.edit_message(new_message.peer_id, new_message,
                                   f"Поздравляем! Вам выпала {item.name} за {format_number(item.price)} БУБ")
-        await client.send_file(message.peer_id, InputDocument(id=item.gif_id, access_hash=item.access_hash,
-                                                              file_reference=base64.b64decode(item.file_reference)), reply_to=new_message)
+        await client.send_file(message.chat_id, InputMediaDocument(InputDocument(id=item.gif_id, access_hash=item.access_hash,
+                                                              file_reference=base64.b64decode(item.file_reference))), reply_to=new_message)
         user_item = UserItem(user_id=user.id, case_item_id=item.id)
         session.add(user_item)
         del openings[message.sender_id]
@@ -226,8 +226,8 @@ async def show_item(client: KitikiClient, message: Message):
         if item is None:
             await message.reply("Не нашли такую гиф!")
             return
-        await client.send_file(message.chat_id, InputDocument(item.gif_id, item.access_hash,
-                                                              file_reference=base64.b64decode(item.file_reference)),
+        await client.send_file(message.chat_id, InputMediaDocument(InputDocument(item.gif_id, item.access_hash,
+                                                              file_reference=base64.b64decode(item.file_reference))),
                                caption=f"{item.emoticon} {item.name} - {format_number(item.price)} БУБ",
                                reply_to=message)
 
