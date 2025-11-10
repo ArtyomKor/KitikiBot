@@ -280,9 +280,9 @@ async def trade(client: KitikiClient, message: Message):
         item.new_user_id = new_user.id
         item.trade_confirmed = False
         await message.reply(
-            f"Обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} отправлен {username}!")
+            f"Обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} БУБ отправлен {username}!")
         await client.send_message(user,
-                                  f"Поступил обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} от {my_username}\nДля того, чтобы принять, отправьте `/accept {item.id}`\nДля отказа: `/decline {item.id}`",
+                                  f"Поступил обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} БУБ от {my_username}\nДля того, чтобы принять, отправьте `/accept {item.id}`\nДля отказа: `/decline {item.id}`",
                                   parse_mode="md")
         await session.commit()
 
