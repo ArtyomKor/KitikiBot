@@ -176,7 +176,7 @@ async def case(client: KitikiClient, message: Message):
         item = items[item]
         del openings[message.sender_id]
         await client.edit_message(new_message.peer_id, new_message,
-                                  f"Поздравляем! Вам выпала {item.name} за {format_number(item.price)} БУБ")
+                                  f"Поздравляем! Вам выпала {item.name} за {format_number(item.price)} БУБ\nТекущий баланс: {format_number(user.balance)} БУБ")
         msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
         doc = msg.media
         await client.send_file(message.chat_id, doc, reply_to=new_message)
@@ -341,7 +341,7 @@ async def sell(client: KitikiClient, message: Message):
             return
         item.sold = True
         item.user.balance = item.user.balance + item.case_item.price
-        await message.reply(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!")
+        await message.reply(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!\nТекущий баланс: {format_number(item.user.balance)} БУБ")
         await session.commit()
 
 
