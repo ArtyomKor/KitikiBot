@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import random
 import sys
 
@@ -17,7 +18,6 @@ from inline import bot
 from kitikigram import KitikiClient, KitikiINCS2Chats
 from plugins.kitikiai import reset_memory
 
-
 AGREE_COUNT = 6
 VOTE_TIMEOUT = 5
 
@@ -34,6 +34,7 @@ async def is_admin(client: KitikiClient, event: Message) -> bool:
     except:
         return False
 
+
 async def is_admin_id(client: KitikiClient, event: Message, user_id: int) -> bool:
     try:
         admins = await client.get_participants(event.chat, filter=ChannelParticipantsAdmins)
@@ -45,6 +46,7 @@ async def is_admin_id(client: KitikiClient, event: Message, user_id: int) -> boo
         return False
     except:
         return False
+
 
 async def is_admin_username(client: KitikiClient, event: Message, username: str) -> bool:
     try:
@@ -126,7 +128,8 @@ async def voted(call: CallbackQuery):
             return
         votes[username][t].add(call.from_user.id)
         keyboard = InlineKeyboardMarkup()
-        keyboard.add(InlineKeyboardButton(f"✅ ({len(list(votes[username]['mute']))})", callback_data=f"mute;{username}"))
+        keyboard.add(
+            InlineKeyboardButton(f"✅ ({len(list(votes[username]['mute']))})", callback_data=f"mute;{username}"))
         keyboard.add(InlineKeyboardButton(f"❌ ({len(list(votes[username]['not']))})", callback_data=f"not;{username}"))
         await bot.edit_message_reply_markup(inline_message_id=call.inline_message_id, reply_markup=keyboard)
     await bot.answer_callback_query(call.id)
@@ -138,8 +141,10 @@ async def start_vote(call: InlineQuery):
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("✅ (0)", callback_data=f"mute;{username}"))
     keyboard.add(InlineKeyboardButton("❌ (0)", callback_data=f"not;{username}"))
-    result = [InlineQueryResultArticle(f"mute;{username}", "KITIKI_BOT_MUTE", InputTextMessageContent(f"Запущено голосование за мут {username} на 1 неделю\nДля мута необходимо минимум {AGREE_COUNT} согласившихся"), keyboard)]
-    await bot.answer_inline_query(call.id, result, cache_time=VOTE_TIMEOUT+2*60)
+    result = [InlineQueryResultArticle(f"mute;{username}", "KITIKI_BOT_MUTE", InputTextMessageContent(
+        f"Запущено голосование за мут {username} на 1 неделю\nДля мута необходимо минимум {AGREE_COUNT} согласившихся"),
+                                       keyboard)]
+    await bot.answer_inline_query(call.id, result, cache_time=VOTE_TIMEOUT + 2 * 60)
 
 
 @KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern=r"\/votemute @[A-Za-z0-9]+"))
@@ -153,6 +158,7 @@ async def vote_mute(client: KitikiClient, event: Message):
     await asyncio.sleep(VOTE_TIMEOUT * 60)
     await message.delete()
     del votes[username]
+
 
 @KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/votemute"))
 async def vote_mute_reply(client: KitikiClient, event: Message):
@@ -175,7 +181,7 @@ async def vote_mute_reply(client: KitikiClient, event: Message):
         return
     user = await client.get_entity(get_from_id(message))
     if user.username is not None:
-        username = "@"+user.username
+        username = "@" + user.username
     else:
         username = user.first_name
         if user.last_name is not None:
@@ -186,42 +192,6 @@ async def vote_mute_reply(client: KitikiClient, event: Message):
     await asyncio.sleep(VOTE_TIMEOUT * 60)
     await message.delete()
     del votes[username]
-
-
-def get_roulette_message(emojis: list[str]):
-    return f"""`|🎰 🎲 ⬇️ 🎲 🎰|`
-    
-`|{" ".join(emojis)}|`
-
-`|🎲 🎰 ⬆️ 🎰 🎲|`"""
-
-
-async def send_roulette(client: KitikiClient, entity, emojis: list[str], reply_to: Message | None = None):
-    i = 0
-    while len(emojis) < 5:
-        emojis.append(emojis[i])
-        i = i + 1
-    random.shuffle(emojis)
-    i = 0
-    emojis = emojis*4
-    orig_msg = get_roulette_message(emojis[i:i + 5])
-    message = await client.send_message(entity, orig_msg, parse_mode="md", reply_to=reply_to)
-    spin = 0
-    while spin < 15:
-        i = i + 1
-        msg = get_roulette_message(emojis[i:i + 5])
-        spin = spin + 1
-        if msg != orig_msg: await client.edit_message(message.peer_id, message, msg, parse_mode="md")
-        await asyncio.sleep(0.25)
-    win_emoji = emojis[i+2]
-    msg = get_roulette_message(emojis[i:i + 5]) + f"\nПоздравляем! Выпало: {win_emoji}"
-    await client.edit_message(message.peer_id, message, msg, parse_mode="md")
-
-
-
-@KitikiClient.on(KitikiINCS2Chats(from_users=Config.ADMINS, pattern="/roulette"))
-async def roulette(client: KitikiClient, event: Message):
-    await send_roulette(client, event.chat_id, ["❌", "✅", "🕯️", "☠️", "👀"], event)
 
 
 async def escortbot_message_translate(message: str):
@@ -283,7 +253,7 @@ def get_from_id(message: Message):
     return from_id
 
 
-hello_msg = "Бета-Здравствуйте!" if sys.platform == "win32" else "Здравствуйте"
+hello_msg = "Бета-Здравствуйте!" if sys.platform == "win32" else "Здравствуйте!"
 
 
 @KitikiClient.on(KitikiINCS2Chats())
@@ -304,7 +274,7 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
         await event.reply(str(event.sticker.id))
         return
     if send_ids["gifs"] and await is_admin(client, event) and event.gif is not None:
-        await event.reply(str(event.gif.id))
+        await event.reply(f"`{event.gif.id}` `{event.gif.access_hash}` `{base64.b64encode(event.gif.file_reference).decode()}`", parse_mode="md")
         return
     if event.reply_to is not None:
         message = await client.get_messages(event.chat, ids=event.reply_to.reply_to_msg_id)
