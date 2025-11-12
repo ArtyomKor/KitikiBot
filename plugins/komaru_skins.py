@@ -204,7 +204,7 @@ async def multi_case(client: KitikiClient, message: Message):
             total_price += win_item.price
             msg.append(f"{win_item.emoticon} {win_item.name} - {format_number(win_item.price)} БУБ")
         msg = "\n".join(msg)
-        await message.reply(f"Поздравляем! Вам выпали:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ")
+        await message.reply(f"Поздравляем! Вам выпали из кейсов общей стоимостью {format_number(case.price*count)} БУБ:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ")
 
         if case.owner_id is not None:
             case.owner.balance = case.owner.balance + ((case.price*10/100)*5)
