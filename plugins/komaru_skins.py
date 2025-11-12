@@ -469,6 +469,8 @@ async def sell_all(client: KitikiClient, message: Message):
                 continue
             if item.new_user_id is not None:
                 continue
+            if item.case_item.collection:
+                continue
             user.balance = user.balance + item.case_item.price
             item.sold = True
         await message.reply(f"Весь инвентарь был продан! Текущий баланс: {format_number(user.balance)} БУБ")
