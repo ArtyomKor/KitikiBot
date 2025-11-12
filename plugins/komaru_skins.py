@@ -250,7 +250,7 @@ async def case(client: KitikiClient, message: Message):
         # del openings[message.sender_id]
         await client.delete_messages(new_message.peer_id, new_message)
         if case.owner_id is not None:
-            case.owner.balance = case.owner.balance + (case.price/100)
+            case.owner.balance = case.owner.balance + (case.price*10/100)
         msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
         doc = msg.media
         await client.send_file(message.chat_id, doc, reply_to=message, caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\nТекущий баланс: {format_number(user.balance)} БУБ")
