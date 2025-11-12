@@ -190,7 +190,7 @@ async def case(client: KitikiClient, message: Message):
             case.owner.balance = case.owner.balance + (case.price/100)
         msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
         doc = msg.media
-        await client.send_file(message.chat_id, doc, reply_to=new_message, caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\nТекущий баланс: {format_number(user.balance)} БУБ")
+        await client.send_file(message.chat_id, doc, reply_to=message, caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\nТекущий баланс: {format_number(user.balance)} БУБ")
         user_item = UserItem(user_id=user.id, case_item_id=item.id)
         session.add(user_item)
         await session.commit()
