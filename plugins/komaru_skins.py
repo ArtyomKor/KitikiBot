@@ -171,11 +171,11 @@ async def case(client: KitikiClient, message: Message):
             return
         user = await get_or_create_user(message, session)
         if await komaru_limit(user):
-            del openings[message.sender_id]
+            # del openings[message.sender_id]
             await message.reply(f"У вас достигнут лимит в {economy_settings.komaru_limit} комару!")
             return
         if user.balance - case.price < 0:
-            del openings[message.sender_id]
+            # del openings[message.sender_id]
             await message.reply(
                 f"У вас недостаточно средств для покупки кейса! Кейс стоит: {format_number(case.price)} БУБ")
             return
