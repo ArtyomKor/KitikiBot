@@ -164,7 +164,7 @@ async def case(client: KitikiClient, message: Message):
             return
     if openings.get(message.sender_id, None) is not None:
         return
-    openings[message.sender_id] = True
+    # openings[message.sender_id] = True
     async with Session() as session:
         case = (await session.execute(select(Case).where(Case.id == case_id))).scalar()
         if case is None:
@@ -184,7 +184,7 @@ async def case(client: KitikiClient, message: Message):
         item, new_message = await send_roulette(client, message.chat_id, list(items.keys()),
                                                 f"Открываем {case.name} за {format_number(case.price)} БУБ", message)
         item = items[item]
-        del openings[message.sender_id]
+        # del openings[message.sender_id]
         await client.delete_messages(new_message.peer_id, new_message)
         if case.owner_id is not None:
             case.owner.balance = case.owner.balance + (case.price/100)
