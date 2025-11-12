@@ -150,6 +150,69 @@ async def komaru_limit(user: User):
     return len([item for item in user.items if not item.sold]) >= economy_settings.komaru_limit
 
 
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/multi"))
+async def multi_case(client: KitikiClient, message: Message):
+    case_id = message.text.split(" ")
+    if len(case_id) < 2:
+        return
+    try:
+        count = int(case_id[1])
+    except:
+        return
+    if not (2 <= count <= 5):
+        await message.reply("Можно открыть от 2 до 5 кейсов за раз")
+        return
+    if len(case_id) == 3:
+        try:
+            case_id = int(case_id[2])
+            if case_id == 999:
+                return
+        except:
+            return
+    else:
+        case_id = 1
+
+    async with Session() as session:
+        case = (await session.execute(select(Case).where(Case.id == case_id))).scalar()
+        if case is None:
+            return
+        user = await get_or_create_user(message, session)
+        current_count = len([item for item in user.items if not item.sold])
+        count = min(count, economy_settings.komaru_limit-current_count)
+
+        if await komaru_limit(user):
+            # del openings[message.sender_id]
+            await message.reply(f"У вас достигнут лимит в {economy_settings.komaru_limit} комару!")
+            return
+        if user.balance - (case.price*count) < 0:
+            # del openings[message.sender_id]
+            await message.reply(
+                f"У вас недостаточно средств для покупки кейса! Кейсы стоят: {format_number(case.price*count)} БУБ")
+            return
+        user.balance = user.balance - (case.price*count)
+        items = case.items
+
+        win_items = {}
+        msg = []
+        total_price = 0
+
+        for i in range(count):
+            win_item = random.choice(items)
+            win_items[win_item.emoticon] = win_item
+            user_item = UserItem(user_id=user.id, case_item_id=win_item.id)
+            session.add(user_item)
+            total_price += win_item.price
+            msg.append(f"{win_item.emoticon} {win_item.name} - {format_number(win_item.price)} БУБ")
+        msg = "\n".join(msg)
+        await message.reply(f"Поздравляем! Вам выпали:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ")
+
+        if case.owner_id is not None:
+            case.owner.balance = case.owner.balance + ((case.price*10/100)*5)
+
+        await session.commit()
+
+
+
 @KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/case"))
 async def case(client: KitikiClient, message: Message):
     case_id = message.text.split(" ")
