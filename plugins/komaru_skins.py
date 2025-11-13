@@ -146,8 +146,12 @@ async def send_roulette(client: KitikiClient, entity, emojis: list[str], prefix:
     return win_emoji, message
 
 
-async def komaru_limit(user: User):
-    return len([item for item in user.items if not item.sold]) >= economy_settings.komaru_limit
+async def komaru_limit(client, message, user: User, sell=True, new_count=0):
+    limit = len([item for item in user.items if not item.sold]) + new_count >= economy_settings.komaru_limit
+    if limit and sell:
+        await sell_all(client, message)
+        return True
+    return limit
 
 
 @KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/multi"))
@@ -159,8 +163,8 @@ async def multi_case(client: KitikiClient, message: Message):
         count = int(case_id[1])
     except:
         return
-    if not (2 <= count <= 5):
-        await message.reply("Можно открыть от 2 до 5 кейсов за раз")
+    if not (2 <= count <= 10):
+        await message.reply("Можно открыть от 2 до 10 кейсов за раз")
         return
     if len(case_id) == 3:
         try:
@@ -178,18 +182,15 @@ async def multi_case(client: KitikiClient, message: Message):
             return
         user = await get_or_create_user(message, session)
         current_count = len([item for item in user.items if not item.sold])
-        count = min(count, economy_settings.komaru_limit-current_count)
+        count = min(count, economy_settings.komaru_limit - current_count)
 
-        if await komaru_limit(user):
-            # del openings[message.sender_id]
-            await message.reply(f"У вас достигнут лимит в {economy_settings.komaru_limit} комару!")
-            return
-        if user.balance - (case.price*count) < 0:
+        sold = await komaru_limit(client, message, user, True, count - 1)
+        if user.balance - (case.price * count) < 0:
             # del openings[message.sender_id]
             await message.reply(
-                f"У вас недостаточно средств для покупки кейса! Кейсы стоят: {format_number(case.price*count)} БУБ")
+                f"У вас недостаточно средств для покупки кейса! Кейсы стоят: {format_number(case.price * count)} БУБ")
             return
-        user.balance = user.balance - (case.price*count)
+        user.balance = user.balance - (case.price * count)
         items = case.items
 
         win_items = {}
@@ -204,13 +205,13 @@ async def multi_case(client: KitikiClient, message: Message):
             total_price += win_item.price
             msg.append(f"{win_item.emoticon} {win_item.name} - {format_number(win_item.price)} БУБ")
         msg = "\n".join(msg)
-        await message.reply(f"Поздравляем! Вам выпали из кейсов общей стоимостью {format_number(case.price*count)} БУБ:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ")
+        await message.reply(
+            f"Поздравляем! Вам выпали из кейсов общей стоимостью {format_number(case.price * count)} БУБ:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ\n{'Все ваши старые GIF были автоматически проданы\n' if sold else ''}Текущий баланс: {format_number(user.balance)}")
 
         if case.owner_id is not None:
-            case.owner.balance = case.owner.balance + ((case.price*10/100)*5)
+            case.owner.balance = case.owner.balance + ((case.price * 10 / 100) * 5)
 
         await session.commit()
-
 
 
 @KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/case"))
@@ -233,10 +234,7 @@ async def case(client: KitikiClient, message: Message):
         if case is None:
             return
         user = await get_or_create_user(message, session)
-        if await komaru_limit(user):
-            # del openings[message.sender_id]
-            await message.reply(f"У вас достигнут лимит в {economy_settings.komaru_limit} комару!")
-            return
+        sold = await komaru_limit(client, message, user, True)
         if user.balance - case.price < 0:
             # del openings[message.sender_id]
             await message.reply(
@@ -250,10 +248,11 @@ async def case(client: KitikiClient, message: Message):
         # del openings[message.sender_id]
         await client.delete_messages(new_message.peer_id, new_message)
         if case.owner_id is not None:
-            case.owner.balance = case.owner.balance + (case.price*10/100)
+            case.owner.balance = case.owner.balance + (case.price * 10 / 100)
         msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
         doc = msg.media
-        await client.send_file(message.chat_id, doc, reply_to=message, caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\nТекущий баланс: {format_number(user.balance)} БУБ")
+        await client.send_file(message.chat_id, doc, reply_to=message,
+                               caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\n{'Все ваши старые GIF были автоматически проданы\n' if sold else ''}Текущий баланс: {format_number(user.balance)} БУБ")
         user_item = UserItem(user_id=user.id, case_item_id=item.id)
         session.add(user_item)
         await session.commit()
@@ -308,29 +307,19 @@ async def show_item(client: KitikiClient, message: Message):
                                reply_to=message)
 
 
-@KitikiClient.on(NewMessage(pattern=r"^\/trade ([0-9]*)"))
+@KitikiClient.on(NewMessage(pattern=r"^\/trade(?:\s+\d+)+$"))
 async def trade(client: KitikiClient, message: Message):
     if message.reply_to is None:
         await message.reply("Ответьте на сообщение человека, которому хотите отправить обмен")
         return
-    item_id = int(message.text.removeprefix("/trade "))
+    item_ids = map(int, message.text.removeprefix("/trade ").split())
+    user_message = await client.get_messages(message.chat, ids=message.reply_to.reply_to_msg_id)
+    user = await client.get_entity(get_from_id(user_message))
+    if user.id == message.from_id:
+        await message.reply("Вы не можете отправить Комару себе!")
+        return
+
     async with Session() as session:
-        item = (await session.execute(
-            select(UserItem).where(UserItem.id == item_id, UserItem.sold == False))).scalar_one_or_none()
-        if item is None:
-            await message.reply(f"Комару с таким ID не найдена!")
-            return
-        if item.user.tg_id != message.sender_id:
-            await message.reply(f"Эта Комару не ваша!")
-            return
-        if item.trade_confirmed is not None:
-            await message.reply(f"Эта Комару уже участвует в обмене!")
-            return
-        user_message = await client.get_messages(message.chat, ids=message.reply_to.reply_to_msg_id)
-        user = await client.get_entity(get_from_id(user_message))
-        if user.id == message.from_id:
-            await message.reply("Вы не можете отправить Комару себе!")
-            return
         if user.username is not None:
             username = "@" + user.username
         else:
@@ -347,17 +336,30 @@ async def trade(client: KitikiClient, message: Message):
                 my_username = f"{my_username} {sender.last_name}"
 
         new_user = await get_or_create_user_by_id(user.id, session)
-        if await komaru_limit(new_user):
+        if await komaru_limit(client, message, new_user, False, len(item_ids)):
             await message.reply(
-                f"Получатель не может получить ваш обмен, так как владеет максимальным количеством Комару!")
+                f"Получатель не может получить ваш обмен, так как владеет максимальным количеством GIF!")
             return
-        item.new_user_id = new_user.id
-        item.trade_confirmed = False
+
+        for item_id in item_ids:
+            item = (await session.execute(
+                select(UserItem).where(UserItem.id == item_id, UserItem.sold == False))).scalar_one_or_none()
+            if item is None:
+                await message.reply(f"GIF {item_id} не найдена!")
+                continue
+            if item.user.tg_id != message.sender_id:
+                await message.reply(f"GIF {item.id} не ваша!")
+                continue
+            if item.trade_confirmed is not None:
+                await message.reply(f"GIF {item.id} уже участвует в обмене!")
+                continue
+            item.new_user_id = new_user.id
+            item.trade_confirmed = False
+            await client.send_message(user,
+                                      f"Поступил обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} БУБ от {my_username}\nДля того, чтобы принять, отправьте `/accept {item.id}`\nДля отказа: `/decline {item.id}`",
+                                      parse_mode="md")
         await message.reply(
-            f"Обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} БУБ отправлен {username}!")
-        await client.send_message(user,
-                                  f"Поступил обмен на {item.case_item.name} стоимостью {format_number(item.case_item.price)} БУБ от {my_username}\nДля того, чтобы принять, отправьте `/accept {item.id}`\nДля отказа: `/decline {item.id}`",
-                                  parse_mode="md")
+            f"Обмен отправлен {username}!")
         await session.commit()
 
 
@@ -365,19 +367,19 @@ async def trade_check(message: Message, item_id: int, session, for_trade: bool =
     item = (await session.execute(
         select(UserItem).where(UserItem.id == item_id, UserItem.sold == False))).scalar_one_or_none()
     if item is None:
-        await message.reply(f"Комару с таким ID не найдена!")
+        await message.reply(f"GIF с таким ID не найдена!")
         return None
     if for_trade and item.trade_confirmed is None:
-        await message.reply(f"Эта Комару не участвует в обмене!")
+        await message.reply(f"Эта GIF не участвует в обмене!")
         return None
     if for_trade:
         user = await get_or_create_user(message, session)
         if item.new_user_id != user.id:
-            await message.reply(f"Эта Комару отправлена не вам!")
+            await message.reply(f"Эта GIF отправлена не вам!")
             return None
     else:
         if item.user.tg_id != message.sender_id:
-            await message.reply(f"Эта Комару не ваша!")
+            await message.reply(f"Эта GIF не ваша!")
             return
     return item
 
@@ -423,7 +425,7 @@ async def sell(client: KitikiClient, message: Message):
             item.sold = True
             item.user.balance = item.user.balance + item.case_item.price
             msg.append(f"{capitalize(item.case_item.name)} продана за {format_number(item.case_item.price)} БУБ!")
-        await message.reply("\n".join(msg)+f"\nТекущий баланс: {format_number(item.user.balance)} БУБ")
+        await message.reply("\n".join(msg) + f"\nТекущий баланс: {format_number(item.user.balance)} БУБ")
         await session.commit()
 
 
