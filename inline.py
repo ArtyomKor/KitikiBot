@@ -15,7 +15,10 @@ from config import Config
 bot = AsyncTeleBot(Config.INLINE_TOKEN)
 
 
-@bot.inline_handler(lambda query: not query.query.startswith("mute;"))
+blacklist_query = ["mute;", "trade;", "profile;"]
+
+
+@bot.inline_handler(lambda query: all([not query.query.startswith(x) for x in blacklist_query]))
 async def default_query(inline_query):
     try:
         await default_inline(inline_query)

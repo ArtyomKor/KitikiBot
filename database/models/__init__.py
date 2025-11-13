@@ -8,3 +8,4 @@ from .users import User
 from .cases import Case
 from .case_items import CaseItem
 from .user_items import UserItem
+from .trades import Trade
