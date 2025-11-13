@@ -648,9 +648,7 @@ async def sell_all(client: KitikiClient, message: Message):
         user = await get_or_create_user(message, session)
         items = user.items
         for item in items:
-            if item.sold:
-                continue
-            if item.new_user_id is not None:
+            if item.sold or item.in_trade:
                 continue
             if item.case_item.collection:
                 continue
