@@ -21,6 +21,7 @@ economy_update_time = datetime.now()
 
 openings = {}
 
+text_sold = 'Все ваши старые GIF были автоматически проданы\n'
 
 def format_number(num):
     if num == int(num):
@@ -206,7 +207,7 @@ async def multi_case(client: KitikiClient, message: Message):
             msg.append(f"{win_item.emoticon} {win_item.name} - {format_number(win_item.price)} БУБ")
         msg = "\n".join(msg)
         await message.reply(
-            f"Поздравляем! Вам выпали из кейсов общей стоимостью {format_number(case.price * count)} БУБ:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ\n{'Все ваши старые GIF были автоматически проданы\n' if sold else ''}Текущий баланс: {format_number(user.balance)}")
+            f"Поздравляем! Вам выпали из кейсов общей стоимостью {format_number(case.price * count)} БУБ:\n\n{msg}\nОбщая сумма выигрыша: {format_number(total_price)} БУБ\n{text_sold if sold else ''}Текущий баланс: {format_number(user.balance)}")
 
         if case.owner_id is not None:
             case.owner.balance = case.owner.balance + ((case.price * 10 / 100) * 5)
@@ -252,7 +253,7 @@ async def case(client: KitikiClient, message: Message):
         msg = await client.get_messages(item.gif_message_chat_id, ids=item.gif_message_id)
         doc = msg.media
         await client.send_file(message.chat_id, doc, reply_to=message,
-                               caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\n{'Все ваши старые GIF были автоматически проданы\n' if sold else ''}Текущий баланс: {format_number(user.balance)} БУБ")
+                               caption=f"Поздравляем! Вам выпала GIF {item.name} за {format_number(item.price)} БУБ\n{text_sold if sold else ''}Текущий баланс: {format_number(user.balance)} БУБ")
         user_item = UserItem(user_id=user.id, case_item_id=item.id)
         session.add(user_item)
         await session.commit()
