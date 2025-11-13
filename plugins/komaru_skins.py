@@ -182,8 +182,6 @@ async def multi_case(client: KitikiClient, message: Message):
         if case is None:
             return
         user = await get_or_create_user(message, session)
-        current_count = len([item for item in user.items if not item.sold])
-        count = min(count, economy_settings.komaru_limit - current_count)
 
         sold = await komaru_limit(client, message, user, True, count - 1)
         if user.balance - (case.price * count) < 0:
