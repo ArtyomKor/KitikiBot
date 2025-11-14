@@ -169,7 +169,7 @@ async def send_roulette(client: KitikiClient, entity, emojis: list[str], prefix:
 async def komaru_limit(client, message, user: User, sell=True, new_count=0):
     limit = len([item for item in user.items if not item.sold]) + new_count >= economy_settings.komaru_limit
     if limit and sell:
-        new_balance = await sell_all(client, message)
+        new_balance = await sell_all(client, message, False)
         return new_balance
     return limit
 
