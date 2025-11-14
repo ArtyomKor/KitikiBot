@@ -203,13 +203,13 @@ async def multi_case(client: KitikiClient, message: Message):
         user = await get_or_create_user(message, session)
 
         new_balance = await komaru_limit(client, message, user, True, count - 1)
-        if isinstance(new_balance, int) and new_balance - (case.price * count) < 0:
+        if isinstance(new_balance, bool):
+            new_balance = user.balance
+        if new_balance - (case.price * count) < 0:
             # del openings[message.sender_id]
             await message.reply(
                 f"У вас недостаточно средств для покупки кейса! Кейсы стоят: {format_number(case.price * count)} БУБ")
             return
-        if isinstance(new_balance, bool):
-            new_balance = user.balance
         user.balance = new_balance - (case.price * count)
         items = case.items
 
@@ -255,13 +255,13 @@ async def case(client: KitikiClient, message: Message):
             return
         user = await get_or_create_user(message, session)
         new_balance = await komaru_limit(client, message, user, True)
-        if isinstance(new_balance, int) and new_balance - case.price  < 0:
-            # del openings[message.sender_id]
-            await message.reply(
-                f"У вас недостаточно средств для покупки кейса! Кейс стоит: {format_number(case.price)} БУБ")
-            return
         if isinstance(new_balance, bool):
             new_balance = user.balance
+        if new_balance - case.price < 0:
+            # del openings[message.sender_id]
+            await message.reply(
+                f"У вас недостаточно средств для покупки кейса! Кейсы стоят: {format_number(case.price * count)} БУБ")
+            return
         user.balance = new_balance - case.price
         items = {item.emoticon: item for item in case.items}
         item, new_message = await send_roulette(client, message.chat_id, list(items.keys()),
