@@ -76,6 +76,7 @@ rare_chance = 7.5
 epic_chance = 2.5
 
 send_ids = {"stickers": False, "gifs": False}
+ss_ban = False
 ai_disabled = False
 
 
@@ -110,6 +111,13 @@ async def gifs(client: KitikiClient, event: Message):
     message = await event.reply(f"Отладка GIF {'включена' if send_ids['gifs'] else 'отключена'}.")
     await asyncio.sleep(3)
     await message.delete()
+
+@KitikiClient.on(KitikiINCS2Chats(pattern="/67"))
+async def ss_command(client: KitikiClient, event: Message):
+    if await is_admin(client, event):
+        global ss_ban
+        ss_ban = not ss_ban
+        await event.delete()
 
 
 votes = {}
@@ -264,6 +272,10 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
             for admin in Config.NOTIFY_ADMINS:
                 await client.send_message(admin, f"Народ требует мута {username} на 5 минут!")
             v["sended"] = True
+    if event.via_bot_id == 6465471545:
+        await asyncio.sleep(30)
+        await event.delete()
+        return
     from_id = get_from_id(event)
     if from_id == client.me.id: return
     message = None
@@ -293,6 +305,8 @@ async def woof_woof_woof_woof(client: KitikiClient, event: Message):
     if event.sticker is not None or event.gif is not None:
         async with Session() as session:
             media = event.sticker if event.sticker is not None else event.gif
+            if media.id in [5193103390623696278, 5770319387156285579, 5323669464414194516] and ss_ban and not await is_admin(client, event):
+                await event.delete()
             emote = (await session.execute(select(Emotion).where(Emotion.media_id == media.id))).scalar_one_or_none()
             if emote is not None:
                 await client.send_react_emoticon(event.chat, event.id, emote.emoticon)

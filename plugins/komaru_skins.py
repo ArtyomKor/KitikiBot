@@ -76,7 +76,7 @@ async def update_economy_settings():
             economy_update_time = datetime.now()
 
 
-@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID]))
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT, Config.KITIKI_BOT_FAMILY_ID]))
 async def on_message(client: KitikiClient, message: Message):
     global kitiki_client
     kitiki_client = client
@@ -129,7 +129,7 @@ async def on_message(client: KitikiClient, message: Message):
         await session.commit()
 
 
-@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/balance"))
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT, Config.KITIKI_BOT_FAMILY_ID], pattern="/balance"))
 async def balance(client: KitikiClient, message: Message):
     user = await get_or_create_user(message)
     await message.reply(f"Ваш баланс: {format_number(user.balance)} БУБ")
@@ -174,7 +174,7 @@ async def komaru_limit(client, message, user: User, sell=True, new_count=0):
     return limit
 
 
-@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/multi"))
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT, Config.KITIKI_BOT_FAMILY_ID], pattern="/multi"))
 async def multi_case(client: KitikiClient, message: Message):
     case_id = message.text.split(" ")
     if len(case_id) < 2:
@@ -237,8 +237,9 @@ async def multi_case(client: KitikiClient, message: Message):
         await session.commit()
 
 
-@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/case"))
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT, Config.KITIKI_BOT_FAMILY_ID], pattern=r"/case(?:[0-9]+)?"))
 async def case(client: KitikiClient, message: Message):
+    if "_" in message.text: return
     case_id = message.text.split(" ")
     if len(case_id) == 1:
         case_id = 1
@@ -291,7 +292,7 @@ def capitalize(s):
     return s
 
 
-@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCS2, Config.KITIKI_BOT_FAMILY_ID], pattern="/profile"))
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT, Config.KITIKI_BOT_FAMILY_ID], pattern="/profile"))
 async def profile(client: KitikiClient, message: Message):
     target_user = message.sender_id
     who = "вас"
@@ -692,3 +693,7 @@ async def on_gif(client: KitikiClient, message: Message):
     if message.gif is None:
         return
     await message.reply(f"{message.id} {message.chat_id}")
+
+@KitikiClient.on(KitikiINCS2Chats(chats=[Config.INCASINO2_CHAT], pattern="/case_+"))
+async def poop(client: KitikiClient, message: Message):
+    await client.send_react_emoticon(message.chat, message.id, "👎")

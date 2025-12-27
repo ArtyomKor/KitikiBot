@@ -24,3 +24,4 @@ class Config:
     KITIKI_BOT_FAMILY_ID = int(getenv("KITIKI_BOT_FAMILY_ID"))
     INCS2 = int(getenv("INCS2_CHAT"))
     GIF_CHAT = int(getenv("GIF_CHAT"))
+    INCASINO2_CHAT = int(getenv("INCASINO2_ID"))
